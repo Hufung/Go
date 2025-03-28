@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go Game - PvP & PvC</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            text-align: center;
+            background: #fff;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        .mode-selector button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 5px;
+            background-color: #4a90e2;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .mode-selector button:hover {
+            background-color: #357abd;
+        }
+
+        #game-status {
+            margin: 20px 0;
+            font-size: 1.2em;
+            color: #555;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(9, 40px);
+            grid-gap: 2px;
+            background: #d2a679;
+            padding: 10px;
+            border-radius: 10px;
+            width: fit-content;
+            margin: 0 auto;
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            background: #d2a679;
+            border: 1px solid #8b5523;
+            border-radius: 50%;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .cell.black::after {
+            content: '';
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            background: #000;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .cell.white::after {
+            content: '';
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            background: #fff;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Play Go</h1>
+        <div class="mode-selector">
+            <button id="pvp-mode">Player vs Player</button>
+            <button id="pvc-mode">Player vs Computer</button>
+        </div>
+        <div id="game-status">Current Turn: Black</div>
+        <div id="board" class="board"></div>
+    </div>
+
+    <script>
+        const boardSize = 9;
+        const board = Array(boardSize).fill().map(() => Array(boardSize).fill(null));
+        let currentPlayer = 'black';
+        let gameMode = null;
+
+        const boardElement = document.getElementById('board');
+        const statusElement = document.getElementById('game-status');
+        const pvpButton = document.getElementById('pvp-mode');
+        const pvcButton = document.getElementById('pvc-mode');
+
+        // Create the board
+        function createBoard() {
+            boardElement.innerHTML = '';
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.addEventListener('click', handleCellClick);
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+
+        // Handle cell clicks
+        function handleCellClick(e) {
+            const row = parseInt(e.target.dataset.row);
+            const col = parseInt(e.target.dataset.col);
+
+            if (board[row][col] === null) {
+                board[row][col] = currentPlayer;
+                e.target.classList.add(currentPlayer);
+                if (gameMode === 'pvc' && currentPlayer === 'black') {
+                    computerMove();
+                } else {
+                    currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
+                    statusElement.textContent = `Current Turn: ${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}`;
+                }
+            }
+        }
+
+        // Simple AI for PvC mode
+        function computerMove() {
+            let placed = false;
+            while (!placed) {
+                const row = Math.floor(Math.random() * boardSize);
+                const col = Math.floor(Math.random() * boardSize);
+                if (board[row][col] === null) {
+                    board[row][col] = 'white';
+                    const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+                    cell.classList.add('white');
+                    placed = true;
+                }
+            }
+            currentPlayer = 'black';
+            statusElement.textContent = `Current Turn: Black`;
+        }
+
+        // Mode selection
+        pvpButton.addEventListener('click', () => {
+            gameMode = 'pvp';
+            resetGame();
+            statusElement.textContent = `Current Turn: Black`;
+        });
+
+        pvcButton.addEventListener('click', () => {
+            gameMode = 'pvc';
+            resetGame();
+            statusElement.textContent = `Current Turn: Black`;
+        });
+
+        // Reset the game
+        function resetGame() {
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    board[i][j] = null;
+                }
+            }
+            currentPlayer = 'black';
+            createBoard();
+        }
+
+        // Initialize the board
+        createBoard();
+    </script>
+</body>
+</html>
