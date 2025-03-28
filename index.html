@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Go Game - PvP & PvC</title>
+    <title>Traditional Go Game</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+            background: #f0e4c8;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -19,55 +19,54 @@
             text-align: center;
             background: #fff;
             padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
         h1 {
             color: #333;
-            font-size: 2.5em;
-            margin-bottom: 20px;
+            font-size: 2em;
+            margin-bottom: 15px;
         }
 
         .mode-selector button {
-            padding: 10px 20px;
-            margin: 0 10px;
-            font-size: 1.1em;
-            border: none;
-            border-radius: 5px;
-            background-color: #4a90e2;
-            color: white;
+            padding: 8px 16px;
+            margin: 0 5px;
+            font-size: 1em;
+            border: 1px solid #333;
+            border-radius: 3px;
+            background-color: #fff;
+            color: #333;
             cursor: pointer;
             transition: background-color 0.3s;
         }
 
         .mode-selector button:hover {
-            background-color: #357abd;
+            background-color: #e0e0e0;
         }
 
         #game-status {
-            margin: 20px 0;
-            font-size: 1.2em;
-            color: #555;
+            margin: 15px 0;
+            font-size: 1.1em;
+            color: #333;
         }
 
         .board {
             display: grid;
-            grid-template-columns: repeat(9, 40px);
-            grid-gap: 2px;
+            grid-template-columns: repeat(19, 25px);
+            grid-gap: 1px;
             background: #d2a679;
-            padding: 10px;
-            border-radius: 10px;
+            padding: 5px;
+            border: 2px solid #8b5523;
             width: fit-content;
             margin: 0 auto;
         }
 
         .cell {
-            width: 40px;
-            height: 40px;
+            width: 25px;
+            height: 25px;
             background: #d2a679;
             border: 1px solid #8b5523;
-            border-radius: 50%;
             cursor: pointer;
             position: relative;
         }
@@ -94,13 +93,13 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 0 3px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Play Go</h1>
+        <h1>Traditional Go</h1>
         <div class="mode-selector">
             <button id="pvp-mode">Player vs Player</button>
             <button id="pvc-mode">Player vs Computer</button>
@@ -110,7 +109,7 @@
     </div>
 
     <script>
-        const boardSize = 9;
+        const boardSize = 19;
         const board = Array(boardSize).fill().map(() => Array(boardSize).fill(null));
         let currentPlayer = 'black';
         let gameMode = null;
@@ -135,6 +134,42 @@
             }
         }
 
+        // Check if a group has liberties
+        function hasLiberties(row, col, color, visited = new Set()) {
+            if (row < 0 || row >= boardSize || col < 0 || col >= boardSize || visited.has(`${row},${col}`)) return false;
+            visited.add(`${row},${col}`);
+            if (board[row][col] === null) return true;
+            if (board[row][col] !== color) return false;
+            return [
+                [row - 1, col], [row + 1, col], [row, col - 1], [row, col + 1]
+            ].some(([r, c]) => hasLiberties(r, c, color, visited));
+        }
+
+        // Capture surrounded stones
+        function captureStones(row, col) {
+            const opponent = currentPlayer === 'black' ? 'white' : 'black';
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            directions.forEach(([dr, dc]) => {
+                const r = row + dr;
+                const c = col + dc;
+                if (r >= 0 && r < boardSize && c >= 0 && c < boardSize && board[r][c] === opponent) {
+                    if (!hasLiberties(r, c, opponent)) {
+                        removeGroup(r, c, opponent);
+                    }
+                }
+            });
+        }
+
+        // Remove a captured group
+        function removeGroup(row, col, color, visited = new Set()) {
+            if (row < 0 || row >= boardSize || col < 0 || col >= boardSize || visited.has(`${row},${col}`) || board[row][col] !== color) return;
+            visited.add(`${row},${col}`);
+            board[row][col] = null;
+            const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+            cell.classList.remove('black', 'white');
+            [[row - 1, col], [row + 1, col], [row, col - 1], [row, col + 1]].forEach(([r, c]) => removeGroup(r, c, color, visited));
+        }
+
         // Handle cell clicks
         function handleCellClick(e) {
             const row = parseInt(e.target.dataset.row);
@@ -143,6 +178,12 @@
             if (board[row][col] === null) {
                 board[row][col] = currentPlayer;
                 e.target.classList.add(currentPlayer);
+                captureStones(row, col);
+                if (!hasLiberties(row, col, currentPlayer)) {
+                    board[row][col] = null;
+                    e.target.classList.remove(currentPlayer);
+                    return; // Illegal move (suicide)
+                }
                 if (gameMode === 'pvc' && currentPlayer === 'black') {
                     computerMove();
                 } else {
@@ -162,7 +203,13 @@
                     board[row][col] = 'white';
                     const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
                     cell.classList.add('white');
-                    placed = true;
+                    if (hasLiberties(row, col, 'white')) {
+                        captureStones(row, col);
+                        placed = true;
+                    } else {
+                        board[row][col] = null;
+                        cell.classList.remove('white');
+                    }
                 }
             }
             currentPlayer = 'black';
